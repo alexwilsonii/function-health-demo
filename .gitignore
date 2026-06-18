@@ -1,0 +1,37 @@
+# ---- .NET ----
+bin/
+obj/
+*.user
+.vs/
+
+# ---- SQLite (data must not be committed) ----
+*.db
+*.db-shm
+*.db-wal
+
+# ---- Node / Vite ----
+node_modules/
+web/dist/
+# Keep the wwwroot directory (needed by static-web-assets) but ignore any built SPA copied into it.
+api/wwwroot/*
+!api/wwwroot/.gitkeep
+
+# ---- Test output ----
+TestResults/
+*.trx
+[Pp]laywright-report/
+test-results/
+
+# ---- Env / local secrets (the committed appsettings.Development.json holds only a dev-only key) ----
+*.local.json
+.env
+.env.*
+!.env.example
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Internal planning docs (kept locally, not part of the submission deliverable) ----
+TaskManager_Design_Doc.md
+TaskManager_Design_Doc_v2.md

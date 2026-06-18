@@ -1,0 +1,2 @@
+# Keeps wwwroot present. In dev it stays empty (the SPA runs on Vite); a production build copies the
+# compiled SPA here so the API can serve it on a single port (see README "single process").
