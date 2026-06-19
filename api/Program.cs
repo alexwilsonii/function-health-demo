@@ -77,7 +77,8 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
-    if (app.Environment.IsDevelopment())
+    // Seed the demo account in Development, or anywhere SeedDemoData=true (used for the public demo).
+    if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("SeedDemoData"))
     {
         await DevDataSeeder.SeedAsync(db);
     }

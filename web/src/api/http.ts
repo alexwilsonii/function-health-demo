@@ -32,7 +32,9 @@ export function setUnauthorizedHandler(handler: () => void) {
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  // BASE_URL is '/' in dev and the build --base (e.g. '/fhd/') in production, so API calls resolve
+  // correctly whether the app is served at the root or under a sub-path.
+  const res = await fetch(`${import.meta.env.BASE_URL}api${path}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
