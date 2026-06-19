@@ -109,6 +109,7 @@ app.UseAuthorization();
 
 app.MapAuthEndpoints();
 app.MapTaskEndpoints();
+app.MapCommentEndpoints();
 
 if (serveSpa)
 {

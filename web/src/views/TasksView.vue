@@ -4,7 +4,7 @@ import { useTaskMutations, useTasksQuery } from '../composables/useTasks'
 import type { CreateTaskInput, Task, TaskQuery, UpdateTaskInput } from '../types'
 import { PRIORITIES, STATUSES, STATUS_LABELS } from '../types'
 import TaskCard from '../components/TaskCard.vue'
-import TaskFormModal from '../components/TaskFormModal.vue'
+import TaskDetailModal from '../components/TaskDetailModal.vue'
 import { useRecentStore } from '../stores/ui'
 
 const filters = reactive<TaskQuery>({ q: '', status: '', priority: '', sort: 'due' })
@@ -25,14 +25,23 @@ watch(searchInput, (val) => {
 
 const modalOpen = ref(false)
 const editing = ref<Task | null>(null)
+const modalMode = ref<'view' | 'edit'>('view')
 
-function openCreate() {
-  editing.value = null
+function openTask(task: Task, mode: 'view' | 'edit') {
+  editing.value = task
+  modalMode.value = mode
+  recent.visit({ id: task.id, title: task.title })
   modalOpen.value = true
 }
+function openView(task: Task) {
+  openTask(task, 'view')
+}
 function openEdit(task: Task) {
-  editing.value = task
-  recent.visit({ id: task.id, title: task.title })
+  openTask(task, 'edit')
+}
+function openCreate() {
+  editing.value = null
+  modalMode.value = 'edit'
   modalOpen.value = true
 }
 function closeModal() {
@@ -74,7 +83,7 @@ function deleteTask(task: Task) {
 }
 function openRecent(id: string) {
   const found = tasks.value?.find((t) => t.id === id)
-  if (found) openEdit(found)
+  if (found) openView(found)
 }
 
 const hasActiveFilters = computed(() => !!filters.q || !!filters.status || !!filters.priority)
@@ -143,6 +152,7 @@ function clearFilters() {
       <li v-for="task in tasks" :key="task.id">
         <TaskCard
           :task="task"
+          @open="openView"
           @edit="openEdit"
           @delete="deleteTask"
           @toggle-status="cycleStatus"
@@ -151,6 +161,12 @@ function clearFilters() {
       </li>
     </ul>
 
-    <TaskFormModal v-if="modalOpen" :task="editing" :submit="handleSubmit" @close="closeModal" />
+    <TaskDetailModal
+      v-if="modalOpen"
+      :task="editing"
+      :mode="modalMode"
+      :submit="handleSubmit"
+      @close="closeModal"
+    />
   </div>
 </template>

@@ -6,6 +6,7 @@ import { formatDue, isOverdue } from '../utils/datetime'
 
 const props = defineProps<{ task: Task }>()
 const emit = defineEmits<{
+  open: [task: Task]
   edit: [task: Task]
   delete: [task: Task]
   'toggle-status': [task: Task]
@@ -39,7 +40,14 @@ const isTemp = computed(() => props.task.id.startsWith('temp-'))
       </button>
 
       <div class="task__body">
-        <h3 class="task__title">{{ task.title }}</h3>
+        <h3 class="task__title">
+          <!-- Stretched button: opens the task in view mode; its ::after covers the whole card so a
+               click anywhere (except the action buttons, which sit above it) opens it. Keyboard-
+               accessible as a real button. -->
+          <button type="button" class="task__open" :disabled="isTemp" @click="emit('open', task)">
+            {{ task.title }}
+          </button>
+        </h3>
         <p v-if="task.notes" class="task__notes">{{ task.notes }}</p>
         <div class="task__meta">
           <span class="badge" :class="`badge--prio-${task.priority.toLowerCase()}`">{{ task.priority }} priority</span>

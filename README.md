@@ -62,6 +62,9 @@ cd ../api && dotnet run                       # http://localhost:5000 serves SPA
 - **Task CRUD** — create, list, edit, delete, plus one-click **status cycling** and **pin** toggling.
   Every mutation updates the list **optimistically** and **rolls back with a toast** if the server
   rejects it.
+- **Detail view + comments** — clicking a task (anywhere on the card) opens a read-only **view**
+  modal; a pencil flips it to edit. Each task has a **comments** thread at the bottom of the view,
+  lazily loaded, with optimistic add/delete.
 - **Search / filter / sort** — search title+notes, filter by status and priority, sort by due date,
   priority, or recency. **Pinned** tasks float to the top; **overdue** tasks are flagged.
 - **Validation** — server-side rules surfaced as **inline field errors**; the form keeps your input
@@ -77,10 +80,10 @@ cd ../api && dotnet run                       # http://localhost:5000 serves SPA
 
 The brief rewards matching the solution to the size of the problem. These were considered and cut:
 
-- **Activity history, comments, tags, bulk actions** — each is more surface area and another "claim
-  it works end to end." For a single-user task manager the marginal value is low and the risk to
+- **Activity history, tags, bulk actions** — each is more surface area and another "claim it works
+  end to end." For a single-user task manager the marginal value is low and the risk to
   *finishedness* is high. (Bulk actions also hide partial-failure semantics that deserve to be done
-  properly or not at all.)
+  properly or not at all.) *(Comments were originally on this list but have since been added.)*
 - **Client-generated IDs / idempotency keys** — IDs are server-generated and the submit button is
   disabled while saving. The idempotency-key pattern is what I'd add for an offline-capable client.
 - **CI/CD, Docker, deployment config, metrics/tracing/monitoring infrastructure** — explicitly not
@@ -137,7 +140,7 @@ intentionally **not** built for this single-user scope — see *What I'd do next
 
 ## Tests
 
-**17 integration tests** (xUnit + `WebApplicationFactory` against a temp SQLite DB), aimed at the two
+**21 integration tests** (xUnit + `WebApplicationFactory` against a temp SQLite DB), aimed at the two
 highest-risk areas the brief names, plus key invariants:
 
 - **Ownership** — User A's data is unreachable by User B via list / get / patch / delete (404 not
@@ -146,6 +149,8 @@ highest-risk areas the brief names, plus key invariants:
   the same 400 envelope; a valid task persists across a *fresh* `DbContext`.
 - **Behavior** — completion-timestamp invariant, `UpdatedAt` bump, sort-by-due ordering,
   case-insensitive search, duplicate-registration and wrong-password handling.
+- **Comments** — add/list/delete round-trip, empty body → 400, and User B can't read or add comments
+  on User A's task (404).
 
 ## What I'd do next
 
@@ -166,15 +171,15 @@ api/     ASP.NET Core Minimal API
   Domain/         entities + enums
   Data/           DbContext, global query filter, value converters, migrations
   Auth/           current-user, JWT token service, cookie name
-  Endpoints/      auth + task endpoints
+  Endpoints/      auth + task + comment endpoints
   Validation/     FluentValidation validators + endpoint filter
-  Infrastructure/ error-envelope middleware, cookie writer
+  Infrastructure/ error-envelope middleware, cookie writer, dev seeder
 web/     Vue 3 + TS SPA
   src/views/        Login, Register, Tasks
-  src/components/    TaskCard, TaskFormModal, ToastHost
+  src/components/    TaskCard, TaskDetailModal (view/edit + comments), ToastHost
   src/stores/        auth, ui (toasts + recently-viewed)
-  src/composables/   useTasks (TanStack Query: list + optimistic mutations)
-  src/api/           fetch wrapper, auth + task clients
+  src/composables/   useTasks, useComments (TanStack Query + optimistic mutations)
+  src/api/           fetch wrapper, auth + task + comment clients
 tests/   xUnit integration tests
 TaskManager.sln
 ```

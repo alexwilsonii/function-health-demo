@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
+    public DbSet<Comment> Comments => Set<Comment>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -56,6 +57,21 @@ public class AppDbContext : DbContext
             // and — because TaskItem.UserId is never null — no rows match. Defense in depth, not the
             // only defense: endpoints also filter explicitly and ownership is covered by tests.
             e.HasQueryFilter(t => t.UserId == _userId);
+        });
+
+        b.Entity<Comment>(e =>
+        {
+            e.HasKey(c => c.Id);
+            e.Property(c => c.Body).IsRequired().HasMaxLength(2000);
+            e.HasIndex(c => c.TaskId);
+            e.HasOne(c => c.Task)
+                .WithMany()
+                .HasForeignKey(c => c.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+            // Per-user filter (same key as TaskItem) — defense in depth, and it satisfies EF's
+            // matching-filter requirement for the required Comment→Task relationship. Comments are
+            // also only ever reached via /api/tasks/{taskId}/comments, which checks task ownership.
+            e.HasQueryFilter(c => c.UserId == _userId);
         });
     }
 }

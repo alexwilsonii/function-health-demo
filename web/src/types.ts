@@ -36,6 +36,13 @@ export interface UpdateTaskInput {
   isPinned: boolean
 }
 
+export interface Comment {
+  id: string
+  taskId: string
+  body: string
+  createdAt: string
+}
+
 export type SortOption = 'due' | 'priority' | 'created'
 
 export interface TaskQuery {

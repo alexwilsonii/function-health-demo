@@ -312,6 +312,7 @@ a {
   gap: 0.6rem;
 }
 .task {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -358,6 +359,8 @@ a {
   gap: 0.35rem;
   align-items: center;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1; /* sit above the stretched .task__open::after so buttons stay clickable */
 }
 
 .status-dot {
@@ -370,6 +373,8 @@ a {
   background: var(--surface);
   flex-shrink: 0;
   line-height: 1;
+  position: relative;
+  z-index: 1; /* above the stretched card-open overlay */
 }
 .status-dot--Done {
   background: #d8f0dd;
@@ -506,4 +511,118 @@ a {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* ---- Clickable card: accessible stretched "open" button ---- */
+.task__open {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.task__open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+/* ---- Modal header + pencil + read-only (view) fields ---- */
+.modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+.modal__head h2 {
+  margin: 0;
+}
+.modal input:disabled,
+.modal select:disabled,
+.modal textarea:disabled {
+  opacity: 1; /* keep view-mode values legible, not washed out */
+  color: var(--text);
+  background: #f1f3f6;
+  cursor: default;
+}
+
+/* ---- Comments ---- */
+.comments {
+  border-top: 1px solid var(--border);
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+}
+.comments h3 {
+  margin: 0 0 0.6rem;
+}
+.comment-add textarea {
+  width: 100%;
+  font: inherit;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+.comment-add__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.4rem;
+}
+.comment-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.comment {
+  background: #f7f8fa;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+.comment--pending {
+  opacity: 0.6;
+}
+.comment__body {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.comment__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.comment__del {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.comment__del:hover:not(:disabled) {
+  color: var(--danger);
+}
+
+/* ---- Screen-reader-only ---- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
