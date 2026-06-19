@@ -162,7 +162,12 @@ highest-risk areas the brief names, plus key invariants:
 - A **persistent, queryable audit trail** (e.g. an EF Core `SaveChanges` interceptor writing immutable
   audit rows) if actions ever need to be reviewed after the fact — the production step up from the
   application-level audit logging that's in place now.
-- Recurring tasks, shared lists.
+- **Multi-user collaboration (teams)** — let users create tasks for each other with **team-based
+  visibility**: a `Team` + `TeamMembership` model, tasks gaining `TeamId` / `CreatedBy` / `Assignee`,
+  team-scoped authorization replacing the per-user query filter, and a settings page to create teams
+  and add members. Deliberately **not** built here — it would replace this app's single-owner security
+  model (its most-tested property) with team RBAC, a real step beyond this scope.
+- Recurring tasks.
 
 ## Project layout
 
