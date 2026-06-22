@@ -10,7 +10,7 @@ public class Comment
 
     public Guid TaskId { get; set; }
 
-    /// <summary>Author. In this single-user app it's always the task owner; kept for integrity/audit.</summary>
+    /// <summary>Author of the comment.</summary>
     public Guid UserId { get; set; }
 
     public string Body { get; set; } = default!;
@@ -18,4 +18,5 @@ public class Comment
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public TaskItem? Task { get; set; }
+    public User? Author { get; set; }
 }

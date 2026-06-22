@@ -4,8 +4,14 @@ public class TaskItem
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    /// <summary>Owner. Every task belongs to exactly one user; enforced by a global query filter.</summary>
-    public Guid UserId { get; set; }
+    /// <summary>The team this task belongs to. Visibility = membership of this team.</summary>
+    public Guid TeamId { get; set; }
+
+    /// <summary>Who created the task.</summary>
+    public Guid CreatedByUserId { get; set; }
+
+    /// <summary>Optional assignee — who should do it. Must be a member of the task's team.</summary>
+    public Guid? AssigneeUserId { get; set; }
 
     public string Title { get; set; } = default!;
 
@@ -27,5 +33,7 @@ public class TaskItem
     /// <summary>Set when Status becomes Done, cleared when it leaves Done.</summary>
     public DateTimeOffset? CompletedAt { get; set; }
 
-    public User? User { get; set; }
+    public Team? Team { get; set; }
+    public User? CreatedBy { get; set; }
+    public User? Assignee { get; set; }
 }

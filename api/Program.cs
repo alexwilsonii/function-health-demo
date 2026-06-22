@@ -18,6 +18,7 @@ builder.Services.AddDbContext<AppDbContext>(o =>
 // ---- Current user + auth services ----
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddScoped<IMembership, Membership>();
 builder.Services.AddSingleton<TokenService>();
 
 // ---- Validation ----
@@ -109,6 +110,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapAuthEndpoints();
+app.MapTeamEndpoints();
 app.MapTaskEndpoints();
 app.MapCommentEndpoints();
 

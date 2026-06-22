@@ -10,6 +10,4 @@ public class User
     public string PasswordHash { get; set; } = default!;
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
-
-    public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
 }

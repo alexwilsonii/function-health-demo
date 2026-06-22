@@ -7,6 +7,8 @@ public class CreateTaskRequestValidator : AbstractValidator<CreateTaskRequest>
 {
     public CreateTaskRequestValidator()
     {
+        RuleFor(x => x.TeamId).NotEmpty().WithMessage("A team is required.");
+
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Title is required.")
             .Must(t => !string.IsNullOrWhiteSpace(t)).WithMessage("Title cannot be only whitespace.")

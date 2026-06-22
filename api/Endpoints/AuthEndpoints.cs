@@ -33,6 +33,11 @@ public static class AuthEndpoints
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password)
             };
             db.Users.Add(user);
+
+            // Every user gets a private "Personal" team to hold their own tasks.
+            var personal = new Team { Name = "Personal", IsPersonal = true, CreatedByUserId = user.Id };
+            db.Teams.Add(personal);
+            db.TeamMemberships.Add(new TeamMembership { TeamId = personal.Id, UserId = user.Id });
             await db.SaveChangesAsync();
 
             AuthCookieWriter.SetAuthCookie(http, tokens.CreateToken(user), env, tokens.Lifetime);

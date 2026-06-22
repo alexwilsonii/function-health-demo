@@ -5,7 +5,7 @@ namespace TaskManager.Tests;
 
 public static class TestHelpers
 {
-    /// <summary>Registers a fresh user (unique email) and returns an authenticated client (cookie set).</summary>
+    /// <summary>Registers a fresh user (unique email unless given) and returns an authenticated client.</summary>
     public static async Task<HttpClient> RegisterClientAsync(this ApiFactory factory, string? email = null)
     {
         var client = factory.CreateClient();
@@ -15,13 +15,38 @@ public static class TestHelpers
         return client;
     }
 
+    public static async Task<Guid> UserIdAsync(this HttpClient client) => (await Me(client)).GetProperty("id").GetGuid();
+
+    public static async Task<string> EmailAsync(this HttpClient client) => (await Me(client)).GetProperty("email").GetString()!;
+
+    private static async Task<JsonElement> Me(HttpClient client) =>
+        await (await client.GetAsync("/api/auth/me")).Content.ReadFromJsonAsync<JsonElement>();
+
+    public static async Task<Guid> PersonalTeamIdAsync(this HttpClient client)
+    {
+        var teams = await (await client.GetAsync("/api/teams")).Content.ReadFromJsonAsync<JsonElement>();
+        return teams.EnumerateArray().First(t => t.GetProperty("isPersonal").GetBoolean()).GetProperty("id").GetGuid();
+    }
+
+    public static async Task<Guid> CreateTeamAsync(this HttpClient client, string name = "Team")
+    {
+        var res = await client.PostAsJsonAsync("/api/teams", new { name });
+        res.EnsureSuccessStatusCode();
+        return (await res.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+    }
+
+    public static Task<HttpResponseMessage> AddMemberAsync(this HttpClient client, Guid teamId, string email) =>
+        client.PostAsJsonAsync($"/api/teams/{teamId}/members", new { email });
+
     public static async Task<Guid> CreateTaskAsync(this HttpClient client, object payload)
     {
         var res = await client.PostAsJsonAsync("/api/tasks", payload);
         res.EnsureSuccessStatusCode();
-        var json = await res.Content.ReadFromJsonAsync<JsonElement>();
-        return json.GetProperty("id").GetGuid();
+        return (await res.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
     }
+
+    public static Task<Guid> CreateTaskAsync(this HttpClient client, Guid teamId, string title = "Task") =>
+        client.CreateTaskAsync(new { teamId, title });
 
     public static Task<HttpResponseMessage> PatchJsonAsync(this HttpClient client, string url, object payload) =>
         client.PatchAsync(url, JsonContent.Create(payload));
@@ -33,6 +58,7 @@ public static class TestHelpers
         string status = "Todo",
         string priority = "Medium",
         string? dueAt = null,
-        bool isPinned = false) =>
-        new { title, notes, status, priority, dueAt, isPinned };
+        bool isPinned = false,
+        Guid? assigneeUserId = null) =>
+        new { title, notes, status, priority, dueAt, isPinned, assigneeUserId };
 }
