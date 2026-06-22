@@ -36,28 +36,11 @@ export function useTaskMutations() {
     qc.setQueriesData<Task[]>({ queryKey: TASKS_KEY }, (old) => (old ? fn(old) : old))
   }
 
+  // Create is not optimistic: the new row's team name + server timestamps aren't known client-side,
+  // so we just refetch on success (the modal closes immediately regardless).
   const create = useMutation({
     mutationFn: (input: CreateTaskInput) => tasksApi.create(input),
-    onMutate: async (input) => {
-      const snaps = await snapshot()
-      const now = new Date().toISOString()
-      const optimistic: Task = {
-        id: `temp-${crypto.randomUUID()}`,
-        title: input.title,
-        notes: input.notes ?? null,
-        status: input.status ?? 'Todo',
-        priority: input.priority ?? 'Medium',
-        dueAt: input.dueAt ?? null,
-        isPinned: false,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: input.status === 'Done' ? now : null,
-      }
-      patchLists((tasks) => [optimistic, ...tasks])
-      return { snaps }
-    },
-    onError: (e, _v, ctx) => {
-      rollback(ctx?.snaps)
+    onError: (e) => {
       // Validation errors (400) are shown inline in the form; don't also toast them.
       if (!(e instanceof ApiError && e.status === 400)) toasts.push('Could not create task.', 'error')
     },

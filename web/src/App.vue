@@ -18,6 +18,10 @@ async function logout() {
   <header class="app-header">
     <div class="app-header__inner">
       <RouterLink class="brand" :to="{ name: 'tasks' }">Task&nbsp;Manager</RouterLink>
+      <nav v-if="auth.isAuthenticated" class="app-header__nav" aria-label="Main">
+        <RouterLink :to="{ name: 'tasks' }">Tasks</RouterLink>
+        <RouterLink :to="{ name: 'teams' }">Teams</RouterLink>
+      </nav>
       <div v-if="auth.isAuthenticated" class="app-header__user">
         <span class="muted">{{ auth.user?.email }}</span>
         <button type="button" class="btn btn--ghost" @click="logout">Log out</button>

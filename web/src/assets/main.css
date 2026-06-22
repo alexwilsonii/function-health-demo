@@ -642,9 +642,108 @@ a {
   margin: -0.25rem 0 0.9rem;
   font-size: 0.8rem;
   color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
 }
 .task__created {
   font-size: 0.75rem;
   color: var(--muted);
   align-self: center;
+}
+
+/* ---- Header nav ---- */
+.app-header__nav {
+  display: flex;
+  gap: 1rem;
+}
+.app-header__nav a {
+  text-decoration: none;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.app-header__nav a.router-link-active {
+  color: var(--primary);
+}
+
+/* ---- Teams page ---- */
+.inline-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.inline-form input {
+  flex: 1;
+}
+.create-team {
+  max-width: 480px;
+  margin-bottom: 1.25rem;
+}
+.team-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.team {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.team__head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+.team__name {
+  font-weight: 600;
+}
+.team__count {
+  margin-left: auto;
+  font-size: 0.8rem;
+}
+.team__detail {
+  padding: 0.25rem 1rem 1rem;
+  border-top: 1px solid var(--border);
+}
+.member-list {
+  list-style: none;
+  margin: 0.75rem 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.member {
+  font-size: 0.9rem;
+}
+.add-member {
+  margin-top: 0.5rem;
+}
+.team__actions {
+  margin-top: 0.75rem;
+}
+
+.badge--team {
+  background: #eaf0fb;
+  border-color: #b9cdf0;
+  color: #1c3f66;
+}
+.badge--assignee {
+  background: #ecf7ee;
+  border-color: #a8d3b3;
+  color: #1c5a2e;
 }

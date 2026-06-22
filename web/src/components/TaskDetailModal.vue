@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { CreateTaskInput, Task, TaskPriority, TaskState, UpdateTaskInput } from '../types'
 import { PRIORITIES, STATUSES, STATUS_LABELS } from '../types'
 import { formatDate, formatDue, isoToLocalInput, localInputToIso } from '../utils/datetime'
 import { ApiError } from '../api/http'
 import { useComments } from '../composables/useComments'
+import { useTeamDetail, useTeamsQuery } from '../composables/useTeams'
 
 const props = defineProps<{
   task: Task | null
@@ -16,8 +17,6 @@ const emit = defineEmits<{ close: [] }>()
 const currentMode = ref<'view' | 'edit'>(props.mode)
 const isView = computed(() => currentMode.value === 'view')
 const isCreate = computed(() => props.task === null)
-// Whether we entered via View (clicked the task) vs straight into Edit (Edit button / create).
-// Governs whether Cancel/Save fall back to View or close the modal.
 const openedInView = props.mode === 'view'
 
 const form = reactive({
@@ -27,6 +26,8 @@ const form = reactive({
   priority: 'Medium' as TaskPriority,
   dueAt: '',
   isPinned: false,
+  teamId: '',
+  assigneeUserId: '',
 })
 function resetForm() {
   form.title = props.task?.title ?? ''
@@ -35,14 +36,38 @@ function resetForm() {
   form.priority = props.task?.priority ?? 'Medium'
   form.dueAt = isoToLocalInput(props.task?.dueAt ?? null)
   form.isPinned = props.task?.isPinned ?? false
+  form.teamId = props.task?.teamId ?? ''
+  form.assigneeUserId = props.task?.assigneeUserId ?? ''
 }
 resetForm()
+
+// --- Teams (create: pick a team) + members (assignee picker) ---
+const teamsQuery = useTeamsQuery()
+const teams = computed(() => teamsQuery.data.value ?? [])
+const activeTeamId = computed(() => (isCreate.value ? form.teamId || null : (props.task?.teamId ?? null)))
+const teamDetail = useTeamDetail(activeTeamId)
+const members = computed(() => teamDetail.data.value?.members ?? [])
+
+// Default a new task to the first team; clear the assignee if the team changes.
+watch(
+  () => teamsQuery.data.value,
+  (list) => {
+    if (isCreate.value && !form.teamId && list?.length) form.teamId = list[0].id
+  },
+  { immediate: true },
+)
+watch(
+  () => form.teamId,
+  () => {
+    if (isCreate.value) form.assigneeUserId = ''
+  },
+)
 
 const fieldErrors = ref<Record<string, string[]>>({})
 const formError = ref('')
 const submitting = ref(false)
 
-// --- Comments (only meaningful for an existing task, fetched lazily in view mode) ---
+// --- Comments (existing task, view mode, lazy) ---
 const taskId = computed(() => props.task?.id ?? null)
 const showComments = computed(() => isView.value && !isCreate.value)
 const { list: commentsQuery, add: addComment, remove: removeComment } = useComments(taskId, showComments)
@@ -107,8 +132,6 @@ function startEdit() {
   nextTick(() => titleInput.value?.focus())
 }
 function cancelEdit() {
-  // Return to View only if we got to Edit from View (the pencil). If the modal opened straight into
-  // Edit (Edit button) or is a create, Cancel closes it — which is what most people expect.
   if (!isCreate.value && openedInView) {
     resetForm()
     fieldErrors.value = {}
@@ -126,14 +149,17 @@ async function onSubmit() {
   formError.value = ''
   const dueAtIso = localInputToIso(form.dueAt)
   const notes = form.notes.trim() ? form.notes : null
+  const assigneeUserId = form.assigneeUserId || null
   try {
     if (isCreate.value) {
       await props.submit({
+        teamId: form.teamId,
         title: form.title,
         notes,
         status: form.status,
         priority: form.priority,
         dueAt: dueAtIso,
+        assigneeUserId,
       } satisfies CreateTaskInput)
       emit('close')
     } else {
@@ -144,8 +170,8 @@ async function onSubmit() {
         priority: form.priority,
         dueAt: dueAtIso,
         isPinned: form.isPinned,
+        assigneeUserId,
       } satisfies UpdateTaskInput)
-      // Came from View → return to View showing the saved values; opened straight into Edit → close.
       if (openedInView) {
         currentMode.value = 'view'
         focusInitial()
@@ -156,7 +182,7 @@ async function onSubmit() {
   } catch (e) {
     if (e instanceof ApiError && e.status === 400) {
       fieldErrors.value = e.fieldErrors
-      if (fieldErrors.value.request) formError.value = fieldErrors.value.request[0]
+      formError.value = fieldErrors.value.request?.[0] ?? fieldErrors.value.teamId?.[0] ?? fieldErrors.value.assigneeUserId?.[0] ?? ''
     } else {
       formError.value = 'Could not save. Please try again.'
     }
@@ -212,9 +238,12 @@ const heading = computed(() => (isCreate.value ? 'New task' : isView.value ? 'Ta
 
       <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
 
-      <p v-if="isView && !isCreate" class="modal__meta">
-        Created {{ formatDate(task?.createdAt ?? null) }} · Updated {{ formatDate(task?.updatedAt ?? null) }}
-      </p>
+      <div v-if="isView && !isCreate" class="modal__meta">
+        <span>Team: <strong>{{ task?.teamName }}</strong></span>
+        <span>Created by {{ task?.createdByEmail }}</span>
+        <span>Assigned to {{ task?.assigneeEmail ?? 'no one' }}</span>
+        <span>Created {{ formatDate(task?.createdAt ?? null) }} · Updated {{ formatDate(task?.updatedAt ?? null) }}</span>
+      </div>
 
       <form novalidate @submit.prevent="onSubmit">
         <div class="field">
@@ -244,6 +273,24 @@ const heading = computed(() => (isCreate.value ? 'New task' : isView.value ? 'Ta
             :aria-describedby="fieldErrors.notes ? 't-notes-err' : undefined"
           ></textarea>
           <p v-if="fieldErrors.notes" id="t-notes-err" class="field-error">{{ fieldErrors.notes[0] }}</p>
+        </div>
+
+        <!-- Team + assignee (hidden in view, where they appear in the meta line above) -->
+        <div v-if="!isView" class="field-row">
+          <div class="field">
+            <label for="t-team">Team</label>
+            <select v-if="isCreate" id="t-team" v-model="form.teamId">
+              <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+            <input v-else id="t-team" type="text" :value="task?.teamName" disabled />
+          </div>
+          <div class="field">
+            <label for="t-assignee">Assignee</label>
+            <select id="t-assignee" v-model="form.assigneeUserId">
+              <option value="">Unassigned</option>
+              <option v-for="m in members" :key="m.userId" :value="m.userId">{{ m.email }}</option>
+            </select>
+          </div>
         </div>
 
         <div class="field-row">
@@ -311,7 +358,7 @@ const heading = computed(() => (isCreate.value ? 'New task' : isView.value ? 'Ta
           <li v-for="c in comments" :key="c.id" class="comment" :class="{ 'comment--pending': c.id.startsWith('temp-') }">
             <div class="comment__body">{{ c.body }}</div>
             <div class="comment__foot">
-              <time :datetime="c.createdAt">{{ formatDue(c.createdAt) }}</time>
+              <span>{{ c.authorEmail }} · <time :datetime="c.createdAt">{{ formatDue(c.createdAt) }}</time></span>
               <button
                 type="button"
                 class="comment__del"

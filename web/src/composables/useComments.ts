@@ -3,6 +3,7 @@ import { computed, type Ref } from 'vue'
 import { commentsApi } from '../api/comments'
 import type { Comment } from '../types'
 import { useToastStore } from '../stores/ui'
+import { useAuthStore } from '../stores/auth'
 import { ApiError } from '../api/http'
 
 /**
@@ -12,6 +13,7 @@ import { ApiError } from '../api/http'
 export function useComments(taskId: Ref<string | null>, enabled: Ref<boolean>) {
   const qc = useQueryClient()
   const toasts = useToastStore()
+  const auth = useAuthStore()
   const keyFor = (id: string | null) => ['comments', id]
 
   const list = useQuery({
@@ -30,6 +32,7 @@ export function useComments(taskId: Ref<string | null>, enabled: Ref<boolean>) {
         id: `temp-${crypto.randomUUID()}`,
         taskId: taskId.value as string,
         body,
+        authorEmail: auth.user?.email ?? 'You',
         createdAt: new Date().toISOString(),
       }
       qc.setQueryData<Comment[]>(key, (old) => [optimistic, ...(old ?? [])])

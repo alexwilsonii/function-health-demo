@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useTaskMutations, useTasksQuery } from '../composables/useTasks'
+import { useTeamsQuery } from '../composables/useTeams'
 import type { CreateTaskInput, Task, TaskQuery, UpdateTaskInput } from '../types'
 import { PRIORITIES, STATUSES, STATUS_LABELS } from '../types'
 import TaskCard from '../components/TaskCard.vue'
 import TaskDetailModal from '../components/TaskDetailModal.vue'
 import { useRecentStore } from '../stores/ui'
 
-const filters = reactive<TaskQuery>({ q: '', status: '', priority: '', sort: 'due' })
+const filters = reactive<TaskQuery>({ q: '', status: '', priority: '', sort: 'due', teamId: '', assignee: '' })
 const queryRef = computed<TaskQuery>(() => ({ ...filters }))
 const { data: tasks, isPending, isError, refetch } = useTasksQuery(queryRef)
 const { create, update, remove } = useTaskMutations()
+const { data: teams } = useTeamsQuery()
 const recent = useRecentStore()
 
 // Debounce search input into the (reactive) query.
@@ -65,6 +67,7 @@ function toUpdateInput(task: Task, patch: Partial<UpdateTaskInput>): UpdateTaskI
     priority: task.priority,
     dueAt: task.dueAt,
     isPinned: task.isPinned,
+    assigneeUserId: task.assigneeUserId,
     ...patch,
   }
 }
@@ -86,11 +89,15 @@ function openRecent(id: string) {
   if (found) openView(found)
 }
 
-const hasActiveFilters = computed(() => !!filters.q || !!filters.status || !!filters.priority)
+const hasActiveFilters = computed(
+  () => !!filters.q || !!filters.status || !!filters.priority || !!filters.teamId || !!filters.assignee,
+)
 function clearFilters() {
   filters.q = ''
   filters.status = ''
   filters.priority = ''
+  filters.teamId = ''
+  filters.assignee = ''
   searchInput.value = ''
 }
 </script>
@@ -98,7 +105,7 @@ function clearFilters() {
 <template>
   <div class="tasks">
     <div class="tasks__head">
-      <h1>My tasks</h1>
+      <h1>Tasks</h1>
       <button type="button" class="btn btn--primary" @click="openCreate">+ New task</button>
     </div>
 
@@ -113,6 +120,21 @@ function clearFilters() {
       <div class="field">
         <label for="f-search">Search</label>
         <input id="f-search" v-model="searchInput" type="search" placeholder="Title or notes" />
+      </div>
+      <div class="field">
+        <label for="f-team">Team</label>
+        <select id="f-team" v-model="filters.teamId">
+          <option value="">All teams</option>
+          <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-assignee">Assignee</label>
+        <select id="f-assignee" v-model="filters.assignee">
+          <option value="">Anyone</option>
+          <option value="me">Assigned to me</option>
+          <option value="unassigned">Unassigned</option>
+        </select>
       </div>
       <div class="field">
         <label for="f-status">Status</label>

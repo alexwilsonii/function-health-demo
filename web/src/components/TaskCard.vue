@@ -19,6 +19,7 @@ const nextStatusLabel = computed(() =>
 )
 // Optimistic (not-yet-persisted) rows get a temp id; disable actions on them.
 const isTemp = computed(() => props.task.id.startsWith('temp-'))
+const assignee = computed(() => props.task.assigneeEmail?.split('@')[0] ?? null)
 </script>
 
 <template>
@@ -52,6 +53,8 @@ const isTemp = computed(() => props.task.id.startsWith('temp-'))
         <div class="task__meta">
           <span class="badge" :class="`badge--prio-${task.priority.toLowerCase()}`">{{ task.priority }} priority</span>
           <span class="badge badge--status">{{ STATUS_LABELS[task.status] }}</span>
+          <span class="badge badge--team"><span aria-hidden="true">👥</span> {{ task.teamName }}</span>
+          <span class="badge badge--assignee"><span aria-hidden="true">👤</span> {{ assignee ?? 'Unassigned' }}</span>
           <span v-if="task.dueAt" class="badge" :class="overdue ? 'badge--overdue' : 'badge--due'">
             <span aria-hidden="true">{{ overdue ? '⚠' : '🗓' }}</span>
             {{ overdue ? 'Overdue: ' : 'Due ' }}{{ formatDue(task.dueAt) }}
