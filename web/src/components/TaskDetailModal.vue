@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import type { CreateTaskInput, Task, TaskPriority, TaskState, UpdateTaskInput } from '../types'
 import { PRIORITIES, STATUSES, STATUS_LABELS } from '../types'
-import { formatDue, isoToLocalInput, localInputToIso } from '../utils/datetime'
+import { formatDate, formatDue, isoToLocalInput, localInputToIso } from '../utils/datetime'
 import { ApiError } from '../api/http'
 import { useComments } from '../composables/useComments'
 
@@ -16,6 +16,9 @@ const emit = defineEmits<{ close: [] }>()
 const currentMode = ref<'view' | 'edit'>(props.mode)
 const isView = computed(() => currentMode.value === 'view')
 const isCreate = computed(() => props.task === null)
+// Whether we entered via View (clicked the task) vs straight into Edit (Edit button / create).
+// Governs whether Cancel/Save fall back to View or close the modal.
+const openedInView = props.mode === 'view'
 
 const form = reactive({
   title: '',
@@ -104,15 +107,17 @@ function startEdit() {
   nextTick(() => titleInput.value?.focus())
 }
 function cancelEdit() {
-  if (isCreate.value) {
+  // Return to View only if we got to Edit from View (the pencil). If the modal opened straight into
+  // Edit (Edit button) or is a create, Cancel closes it — which is what most people expect.
+  if (!isCreate.value && openedInView) {
+    resetForm()
+    fieldErrors.value = {}
+    formError.value = ''
+    currentMode.value = 'view'
+    focusInitial()
+  } else {
     emit('close')
-    return
   }
-  resetForm()
-  fieldErrors.value = {}
-  formError.value = ''
-  currentMode.value = 'view'
-  focusInitial()
 }
 
 async function onSubmit() {
@@ -140,9 +145,13 @@ async function onSubmit() {
         dueAt: dueAtIso,
         isPinned: form.isPinned,
       } satisfies UpdateTaskInput)
-      // Stay open, return to view mode showing the saved values.
-      currentMode.value = 'view'
-      focusInitial()
+      // Came from View → return to View showing the saved values; opened straight into Edit → close.
+      if (openedInView) {
+        currentMode.value = 'view'
+        focusInitial()
+      } else {
+        emit('close')
+      }
     }
   } catch (e) {
     if (e instanceof ApiError && e.status === 400) {
@@ -184,19 +193,28 @@ const heading = computed(() => (isCreate.value ? 'New task' : isView.value ? 'Ta
     <div ref="dialogRef" class="modal card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal__head">
         <h2 id="modal-title">{{ heading }}</h2>
-        <button
-          v-if="isView && !isCreate"
-          ref="editButton"
-          type="button"
-          class="icon-btn"
-          aria-label="Edit task"
-          @click="startEdit"
-        >
-          <span aria-hidden="true">✏️</span>
-        </button>
+        <div class="modal__head-actions">
+          <button
+            v-if="isView && !isCreate"
+            ref="editButton"
+            type="button"
+            class="icon-btn"
+            aria-label="Edit task"
+            @click="startEdit"
+          >
+            <span aria-hidden="true">✏️</span>
+          </button>
+          <button type="button" class="icon-btn" aria-label="Close" @click="emit('close')">
+            <span aria-hidden="true">✕</span>
+          </button>
+        </div>
       </div>
 
       <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
+
+      <p v-if="isView && !isCreate" class="modal__meta">
+        Created {{ formatDate(task?.createdAt ?? null) }} · Updated {{ formatDate(task?.updatedAt ?? null) }}
+      </p>
 
       <form novalidate @submit.prevent="onSubmit">
         <div class="field">

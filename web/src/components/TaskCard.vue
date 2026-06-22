@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import type { Task } from '../types'
 import { STATUS_LABELS } from '../types'
-import { formatDue, isOverdue } from '../utils/datetime'
+import { formatDate, formatDue, isOverdue } from '../utils/datetime'
 
 const props = defineProps<{ task: Task }>()
 const emit = defineEmits<{
@@ -57,6 +57,7 @@ const isTemp = computed(() => props.task.id.startsWith('temp-'))
             {{ overdue ? 'Overdue: ' : 'Due ' }}{{ formatDue(task.dueAt) }}
           </span>
           <span v-if="task.isPinned" class="badge badge--pinned"><span aria-hidden="true">📌</span> Pinned</span>
+          <span class="task__created">Created {{ formatDate(task.createdAt) }}</span>
         </div>
       </div>
     </div>

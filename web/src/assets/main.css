@@ -347,6 +347,12 @@ a {
   color: var(--muted);
   font-size: 0.9rem;
   word-break: break-word;
+  /* Preview only — clamp to 2 lines in the list; the full text shows in the detail view. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .task__meta {
   display: flex;
@@ -625,4 +631,20 @@ a {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.modal__head-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+.modal__meta {
+  margin: -0.25rem 0 0.9rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.task__created {
+  font-size: 0.75rem;
+  color: var(--muted);
+  align-self: center;
 }

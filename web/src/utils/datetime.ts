@@ -11,6 +11,12 @@ export function formatDue(iso: string | null): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
+/** Date only (no time) — for created/updated stamps. */
+export function formatDate(iso: string | null): string {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' })
+}
+
 /** ISO/UTC → the local wall-clock value an <input type="datetime-local"> expects. */
 export function isoToLocalInput(iso: string | null): string {
   if (!iso) return ''
