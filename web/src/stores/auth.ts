@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { authApi } from '../api/auth'
 import type { User } from '../types'
+import { useRecentStore } from './ui'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -24,11 +25,13 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(email: string, password: string) {
     user.value = await authApi.login(email, password)
     initialized.value = true
+    useRecentStore().clear() // don't carry per-user UI state across accounts
   }
 
   async function register(email: string, password: string) {
     user.value = await authApi.register(email, password)
     initialized.value = true
+    useRecentStore().clear()
   }
 
   async function logout() {
@@ -36,11 +39,13 @@ export const useAuthStore = defineStore('auth', () => {
       await authApi.logout()
     } finally {
       user.value = null
+      useRecentStore().clear()
     }
   }
 
   function clear() {
     user.value = null
+    useRecentStore().clear()
   }
 
   return { user, initialized, isAuthenticated, init, login, register, logout, clear }

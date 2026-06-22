@@ -42,5 +42,9 @@ export const useRecentStore = defineStore('recent', () => {
     items.value = items.value.filter((x) => x.id !== id)
   }
 
-  return { items, visit, remove }
+  function clear() {
+    items.value = []
+  }
+
+  return { items, visit, remove, clear }
 })
