@@ -3,9 +3,9 @@
 A small, multi-tenant to-do application: **ASP.NET Core (.NET 8) Minimal API + EF Core/SQLite** on
 the backend, **Vue 3 + TypeScript** (Vite, Pinia, TanStack Query) on the frontend.
 
-It's deliberately a small surface area, finished end to end: real auth and per-user ownership, full
-CRUD with optimistic UI, validation with inline errors, search/filter/sort, and tests on the parts
-that actually carry risk.
+It's a focused surface area, finished end to end: real auth, **team-based collaboration** (tasks
+belong to teams; members share visibility and can be assigned work), full CRUD with optimistic UI,
+validation with inline errors, search/filter/sort, and tests on the parts that actually carry risk.
 
 ---
 
@@ -30,11 +30,12 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5173** and either register an account or use the seeded demo login:
+Open **http://localhost:5173** and either register an account or use a seeded demo login:
 
-> **Demo login (development only):** `demo@example.com` / `Password123!`
-> Seeded on first startup in Development, with a handful of sample tasks (overdue, pinned, mixed
-> priorities/statuses). It is **never** seeded in production, and seeding is idempotent (runs once).
+> **Demo logins (development only):** `demo@example.com` and `teammate@example.com`, both
+> `Password123!`. They share an **"Acme Web Team"** (with tasks cross-assigned between them) and each
+> has a private **Personal** team — log in as either to see both sides of team collaboration. Seeded
+> on first startup, **never** in production, idempotent.
 
 No secrets to set, no HTTPS dev cert — dev runs over plain `http://localhost`.
 
@@ -62,6 +63,10 @@ cd ../api && dotnet run                       # http://localhost:5000 serves SPA
 - **Task CRUD** — create, list, edit, delete, plus one-click **status cycling** and **pin** toggling.
   Every mutation updates the list **optimistically** and **rolls back with a toast** if the server
   rejects it.
+- **Teams & assignment** — every task belongs to a team and team members share visibility. A **Teams**
+  page lets you create teams, add members **by email**, and leave/delete; tasks can be **assigned** to
+  a member and filtered by team and assignee. Each user has a private **Personal** team. Editing and
+  commenting are open to any member; **only the creator can delete**.
 - **Detail view + comments** — clicking a task (anywhere on the card) opens a read-only **view**
   modal; a pencil flips it to edit. Each task has a **comments** thread at the bottom of the view,
   lazily loaded, with optimistic add/delete.
@@ -81,9 +86,9 @@ cd ../api && dotnet run                       # http://localhost:5000 serves SPA
 The brief rewards matching the solution to the size of the problem. These were considered and cut:
 
 - **Activity history, tags, bulk actions** — each is more surface area and another "claim it works
-  end to end." For a single-user task manager the marginal value is low and the risk to
-  *finishedness* is high. (Bulk actions also hide partial-failure semantics that deserve to be done
-  properly or not at all.) *(Comments were originally on this list but have since been added.)*
+  end to end," with low marginal value and high risk to *finishedness*. (Bulk actions also hide
+  partial-failure semantics that deserve to be done properly or not at all.) *(Comments and teams were
+  originally on this list and have since been built.)*
 - **Client-generated IDs / idempotency keys** — IDs are server-generated and the submit button is
   disabled while saving. The idempotency-key pattern is what I'd add for an offline-capable client.
 - **CI/CD, Docker, deployment config, metrics/tracing/monitoring infrastructure** — explicitly not
@@ -96,15 +101,19 @@ The brief rewards matching the solution to the size of the problem. These were c
   over-engineering. If it grew into separate bounded contexts (tasks, teams, notifications) I'd split
   along those seams and introduce events for cross-context reactions.
 
-## Auth & ownership
+## Auth, teams & access control
 
 - JWT issued by the API in an **httpOnly + `SameSite=Strict`** cookie (`Secure` in production; off
   for `http://localhost` in dev). Passwords hashed with **BCrypt**. The SPA and API are same-origin
   (Vite proxy in dev, `wwwroot` in prod), so `SameSite=Strict` closes the CSRF vector.
-- **Ownership is enforced at the data layer** by an EF Core **global query filter** that scopes every
-  task query to the current user. Single-item operations also use an explicit `UserId` predicate, and
-  never `DbSet.Find` (which bypasses query filters). A missing or foreign task returns **404, not
-  403**, so existence isn't leaked.
+- **Visibility is team-based.** Every task belongs to a team, and you can see a task only if you're a
+  member of its team. Each user gets a private **Personal** team on registration, so solo use is just
+  "a team of one." The original per-user **global query filter was replaced by explicit team-scoping**
+  — a per-request `IMembership` service that the endpoints filter against (`teamIds.Contains(t.TeamId)`).
+- **Permissions:** any member can view / edit / comment / change status on a team's tasks; **only the
+  task's creator can delete it**. A task you can't see returns **404** (no existence leak); a teammate
+  who *can* see a task but isn't its creator gets **403** on delete. Members are added **by email** (no
+  acceptance step yet); you can leave a team while others remain, or delete one you're the sole member of.
 - **Honest caveat:** a plain JWT isn't server-revocable before it expires; logout clears the cookie.
   Production would use short-lived access + refresh tokens, or a server-side denylist.
 
@@ -126,31 +135,34 @@ The brief rewards matching the solution to the size of the problem. These were c
 Security-relevant actions are logged through the built-in `ILogger` under a dedicated **`Audit`**
 category (filterable via `Logging:LogLevel:Audit` in `appsettings.json`):
 
-- **`Information`** — account registered, login succeeded, logout, task created / updated / deleted
-  (logged by **`UserId` + `TaskId`**, never task content).
+- **`Information`** — account registered, login / logout, task created / updated / deleted, comments,
+  and team membership changes (logged by **IDs**, never task/comment content).
 - **`Warning`** — login failures (by attempted email), and mutating requests that resolve to a 404
-  (acting on a task that isn't yours or doesn't exist).
+  (acting on a task not in one of your teams, or one that doesn't exist).
 
 Passwords, hashes, and tokens are **never** logged. Auth events include the email by design (it's the
 audit identity); everything else prefers IDs over PII. This is deliberately *application logging*, not a
 metrics/tracing stack.
 
 A **persistent, queryable audit trail** (immutable who-did-what rows, retained for later review) is
-intentionally **not** built for this single-user scope — see *What I'd do next*.
+intentionally **not** built at this scope — see *What I'd do next*.
 
 ## Tests
 
-**21 integration tests** (xUnit + `WebApplicationFactory` against a temp SQLite DB), aimed at the two
+**30 integration tests** (xUnit + `WebApplicationFactory` against a temp SQLite DB), aimed at the two
 highest-risk areas the brief names, plus key invariants:
 
-- **Ownership** — User A's data is unreachable by User B via list / get / patch / delete (404 not
-  403); unauthenticated requests are 401.
-- **Validation** — empty / whitespace / 201-char titles, invalid enum, and malformed JSON all return
-  the same 400 envelope; a valid task persists across a *fresh* `DbContext`.
+- **Team visibility** — a member can see and edit a teammate's task; a non-member gets 404 (no leak);
+  a teammate who isn't the creator gets 403 on delete; unauthenticated requests are 401.
+- **Teams & assignment** — Personal team auto-created on registration; add-member-by-email grants
+  visibility; you can't add to the Personal team / add an unknown email / add to a team you're not in;
+  leave-rules and sole-member delete; an assignee must be a team member.
+- **Validation** — empty / whitespace / 201-char titles, missing team, invalid enum, and malformed
+  JSON all return the same 400 envelope; a valid task persists across a *fresh* `DbContext`.
 - **Behavior** — completion-timestamp invariant, `UpdatedAt` bump, sort-by-due ordering,
   case-insensitive search, duplicate-registration and wrong-password handling.
-- **Comments** — add/list/delete round-trip, empty body → 400, and User B can't read or add comments
-  on User A's task (404).
+- **Comments** — add/list/delete round-trip with author, empty body → 400, and a non-member can't read
+  or add comments on a task (404).
 
 ## What I'd do next
 
@@ -162,11 +174,8 @@ highest-risk areas the brief names, plus key invariants:
 - A **persistent, queryable audit trail** (e.g. an EF Core `SaveChanges` interceptor writing immutable
   audit rows) if actions ever need to be reviewed after the fact — the production step up from the
   application-level audit logging that's in place now.
-- **Multi-user collaboration (teams)** — let users create tasks for each other with **team-based
-  visibility**: a `Team` + `TeamMembership` model, tasks gaining `TeamId` / `CreatedBy` / `Assignee`,
-  team-scoped authorization replacing the per-user query filter, and a settings page to create teams
-  and add members. Deliberately **not** built here — it would replace this app's single-owner security
-  model (its most-tested property) with team RBAC, a real step beyond this scope.
+- A team **invite/acceptance flow** (today add-by-email adds people immediately), the ability to
+  **remove** other members, and **per-user pins** (a pin is currently shared on the task).
 - Recurring tasks.
 
 ## Project layout
@@ -174,17 +183,17 @@ highest-risk areas the brief names, plus key invariants:
 ```
 api/     ASP.NET Core Minimal API
   Domain/         entities + enums
-  Data/           DbContext, global query filter, value converters, migrations
-  Auth/           current-user, JWT token service, cookie name
-  Endpoints/      auth + task + comment endpoints
+  Data/           DbContext, value converters, migrations
+  Auth/           current-user, team-membership scoping, JWT token service, cookie name
+  Endpoints/      auth + team + task + comment endpoints
   Validation/     FluentValidation validators + endpoint filter
   Infrastructure/ error-envelope middleware, cookie writer, dev seeder
 web/     Vue 3 + TS SPA
-  src/views/        Login, Register, Tasks
+  src/views/        Login, Register, Tasks, Teams
   src/components/    TaskCard, TaskDetailModal (view/edit + comments), ToastHost
   src/stores/        auth, ui (toasts + recently-viewed)
-  src/composables/   useTasks, useComments (TanStack Query + optimistic mutations)
-  src/api/           fetch wrapper, auth + task + comment clients
+  src/composables/   useTasks, useComments, useTeams (TanStack Query + optimistic mutations)
+  src/api/           fetch wrapper, auth + team + task + comment clients
 tests/   xUnit integration tests
 TaskManager.sln
 ```
