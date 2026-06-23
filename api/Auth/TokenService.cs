@@ -6,6 +6,10 @@ using TaskManager.Api.Domain;
 
 namespace TaskManager.Api.Auth;
 
+/// <summary>
+/// Issues the signed JWT carried in the auth cookie. The signing key and issuer come from
+/// configuration (Jwt:Key / Jwt:Issuer); the matching validation lives in Program.cs.
+/// </summary>
 public sealed class TokenService
 {
     private readonly SymmetricSecurityKey _key;
@@ -26,6 +30,8 @@ public sealed class TokenService
 
     public string CreateToken(User user)
     {
+        // "sub" is the user id (read back by CurrentUser; JwtBearer keeps it verbatim because
+        // MapInboundClaims is disabled in Program.cs). "jti" makes each issued token unique.
         var claims = new[]
         {
             new Claim("sub", user.Id.ToString()),

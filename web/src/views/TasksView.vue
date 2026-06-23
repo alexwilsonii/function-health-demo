@@ -61,6 +61,8 @@ async function handleSubmit(payload: CreateTaskInput | UpdateTaskInput) {
   }
 }
 
+// Quick actions (status cycle, pin) reuse the PATCH endpoint, which expects the full editable state —
+// so rebuild it from the task and override just the field(s) that changed.
 function toUpdateInput(task: Task, patch: Partial<UpdateTaskInput>): UpdateTaskInput {
   return {
     title: task.title,

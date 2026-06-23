@@ -89,7 +89,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown)
-  previouslyFocused?.focus?.()
+  previouslyFocused?.focus?.() // restore focus to whatever opened the dialog
 })
 
 function focusInitial() {
@@ -107,6 +107,8 @@ function onKeydown(e: KeyboardEvent) {
     trapFocus(e)
   }
 }
+// Keep Tab focus inside the dialog: wrap from the last focusable back to the first (and Shift+Tab the
+// other way) so keyboard focus can't escape the modal while it's open.
 function trapFocus(e: KeyboardEvent) {
   const root = dialogRef.value
   if (!root) return
