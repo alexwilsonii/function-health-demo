@@ -1,11 +1,24 @@
 # Task Manager
 
-A small, multi-tenant to-do application: **ASP.NET Core (.NET 8) Minimal API + EF Core/SQLite** on
-the backend, **Vue 3 + TypeScript** (Vite, Pinia, TanStack Query) on the frontend.
+This is a small task management application built on an **ASP.NET Core (.NET 8) API** backed by a simple **SQLite** 
+on database and with a **Vue 3 + TypeScript** (Vite, Pinia, TanStack Query) frontend.
 
-The app has a focused surface area and finished end to end with real auth, **team-based collaboration** (tasks
+The app has a limited scope with auth, **team-based collaboration** (tasks
 belong to teams; members share visibility and can be assigned work), full CRUD with optimistic UI,
-validation with inline errors, search/filter/sort, and tests on the parts that actually carry risk.
+validation with inline errors, search/filter/sort, and tests on the parts that carry risk. 
+
+To begin with, I immediately thought of this as a "Mantis Bug Tracker-esque" or "Jira Ultra Lite-esque" type
+of project vs a simple "ToDo List" application. The guide seems to caution on not over-scoping or over-engineering
+the project, which makes me think maybe a simple to do list was the intent, but the more I worked on this and
+thought about it, the more I felt that semantics matter and that "task manager" sounds like something that would
+at the very least be expected to be something used by multiple people in collaboration vs one person working alone.
+This was when I added the Teams concept (more below). My original and first commits were more designed towards the
+individual but set up in such a way that adding more features like Teams could be done later. 
+
+If I wanted to spend even a couple more hours on this, I'd set up an activity history (who changed what on which task)
+and email notifications for the tasks. I'd also likely work in concepts like "Releases" and/or "Road Maps" so that tasks
+could be grouped into Jira style "Epics". Again though, I intentionally kept this assessment more limited in scope in terms
+of direct user features added.
 
 ---
 
