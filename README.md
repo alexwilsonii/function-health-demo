@@ -3,7 +3,7 @@
 A small, multi-tenant to-do application: **ASP.NET Core (.NET 8) Minimal API + EF Core/SQLite** on
 the backend, **Vue 3 + TypeScript** (Vite, Pinia, TanStack Query) on the frontend.
 
-It's a focused surface area, finished end to end: real auth, **team-based collaboration** (tasks
+The app has a focused surface area and finished end to end with real auth, **team-based collaboration** (tasks
 belong to teams; members share visibility and can be assigned work), full CRUD with optimistic UI,
 validation with inline errors, search/filter/sort, and tests on the parts that actually carry risk.
 
@@ -35,41 +35,31 @@ Open **http://localhost:5173** and either register an account or use a seeded de
 > **Demo logins (development only):** `demo@example.com` and `teammate@example.com`, both
 > `Password123!`. They share an **"Acme Web Team"** (with tasks cross-assigned between them) and each
 > has a private **Personal** team — log in as either to see both sides of team collaboration. Seeded
-> on first startup, **never** in production, idempotent.
+> on first startup locally or in dev **only**.
 
-No secrets to set, no HTTPS dev cert — dev runs over plain `http://localhost`.
+No secrets to set, no HTTPS dev cert; dev runs over plain `http://localhost` for now.
 
 **Run the tests:**
 
 ```bash
 dotnet test
 ```
-
-**Optional — production-style single process:** build the SPA into the API and serve both on one
-port:
-
-```bash
-cd web && npm run build                      # outputs web/dist
-mkdir -p ../api/wwwroot && cp -r dist/* ../api/wwwroot/   # API serves the SPA from wwwroot
-cd ../api && dotnet run                       # http://localhost:5000 serves SPA + API
-```
-
 ---
 
 ## What I built
 
 - **Auth** — register, login, logout, current-user. The JWT lives in an **httpOnly cookie**;
-  sessions survive a refresh, and an expired session cleanly bounces you to the login page.
-- **Task CRUD** — create, list, edit, delete, plus one-click **status cycling** and **pin** toggling.
+  sessions survive a refresh, and an expired session takes users to the login page.
+- **Task CRUD** — create, list, edit, delete, and one-click **status cycling** and **"pinned"** toggling.
   Every mutation updates the list **optimistically** and **rolls back with a toast** if the server
   rejects it.
 - **Teams & assignment** — every task belongs to a team and team members share visibility. A **Teams**
-  page lets you create teams, add members **by email**, and leave/delete; tasks can be **assigned** to
-  a member and filtered by team and assignee. Each user has a private **Personal** team. Editing and
-  commenting are open to any member; **only the creator can delete**.
+  page lets you create teams, add members **by email**, and leave/delete. Tasks can be **assigned** to
+  any member of the Team and filtered by team and assignee. Each user has a private **Personal** team created on sign-up.
+  Editing and commenting are open to any member of the Team; **only the creator can delete a task**.
 - **Detail view + comments** — clicking a task (anywhere on the card) opens a read-only **view**
   modal; a pencil flips it to edit. Each task has a **comments** thread at the bottom of the view,
-  lazily loaded, with optimistic add/delete.
+  lazily loaded, with add/delete. There is no editing of comments at this time.
 - **Search / filter / sort** — search title+notes, filter by status and priority, sort by due date,
   priority, or recency. **Pinned** tasks float to the top; **overdue** tasks are flagged.
 - **Validation** — server-side rules surfaced as **inline field errors**; the form keeps your input
@@ -78,44 +68,42 @@ cd ../api && dotnet run                       # http://localhost:5000 serves SPA
 - **Accessible & responsive** — keyboard-operable throughout, a focus-trapped create/edit dialog
   (`Esc` to close, focus restored on close), `aria-live` announcements for validation and toasts,
   status/priority/overdue conveyed by **text + icon, never color alone**, and a layout that reflows
-  from ~320px to desktop. Built to WCAG 2.1 AA guidance (verified by keyboard walkthrough; not a
-  full audit).
+  from ~320px to desktop.
 
 ## What I deliberately left out — and why
 
-The brief rewards matching the solution to the size of the problem. These were considered and cut:
+The guide mentions matching the solution to the size of the problem. These were considered and cut at this time:
 
 - **Activity history, tags, bulk actions** — each is more surface area and another "claim it works
   end to end," with low marginal value and high risk to *finishedness*. (Bulk actions also hide
-  partial-failure semantics that deserve to be done properly or not at all.) *(Comments and teams were
-  originally on this list and have since been built.)*
+  partial-failure semantics that deserve to be done properly or not at all.) 
 - **Client-generated IDs / idempotency keys** — IDs are server-generated and the submit button is
-  disabled while saving. The idempotency-key pattern is what I'd add for an offline-capable client.
+  disabled while saving. The idempotency-key pattern is what I'd add for an offline-capable client
+  in case of potential Internet connection issues.
 - **CI/CD, Docker, deployment config, metrics/tracing/monitoring infrastructure** — explicitly not
   evaluated. (Security-relevant actions *are* logged via the built-in logger — see **Logging &
   auditability** below — but there's no metrics/tracing/dashboard stack.)
 - **Password reset / email verification, refresh tokens / token revocation** — out of scope (see the
   auth caveat below).
-- **Microservices / event-driven decomposition** — Function's imaging platform uses these at scale,
-  but a single-entity task manager is one process, one DB, one deploy; splitting it would be
-  over-engineering. If it grew into separate bounded contexts (tasks, teams, notifications) I'd split
-  along those seams and introduce events for cross-context reactions.
+- **Microservices / event-driven decomposition** — A single-entity task manager is one process, one
+  DB, one deploy. Splitting it would be over-engineering for a task this size. If it grew into
+  separate bounded contexts (tasks, teams, notifications) I'd split along those seams and introduce
+  events for cross-context reactions.
 
 ## Auth, teams & access control
 
 - JWT issued by the API in an **httpOnly + `SameSite=Strict`** cookie (`Secure` in production; off
   for `http://localhost` in dev). Passwords hashed with **BCrypt**. The SPA and API are same-origin
-  (Vite proxy in dev, `wwwroot` in prod), so `SameSite=Strict` closes the CSRF vector.
+  (Vite proxy in dev, `wwwroot` in prod), so `SameSite=Strict` closes the CSRF vector. A plain JWT
+  isn't server-revocable before it expires; logout clears the cookie. Production would use short-lived
+  access + refresh tokens, or a server-side denylist.
 - **Visibility is team-based.** Every task belongs to a team, and you can see a task only if you're a
   member of its team. Each user gets a private **Personal** team on registration, so solo use is just
-  "a team of one." The original per-user **global query filter was replaced by explicit team-scoping**
-  — a per-request `IMembership` service that the endpoints filter against (`teamIds.Contains(t.TeamId)`).
+  "a team of one." 
 - **Permissions:** any member can view / edit / comment / change status on a team's tasks; **only the
-  task's creator can delete it**. A task you can't see returns **404** (no existence leak); a teammate
-  who *can* see a task but isn't its creator gets **403** on delete. Members are added **by email** (no
-  acceptance step yet); you can leave a team while others remain, or delete one you're the sole member of.
-- **Honest caveat:** a plain JWT isn't server-revocable before it expires; logout clears the cookie.
-  Production would use short-lived access + refresh tokens, or a server-side denylist.
+  task's creator can delete it**. A task you can't see returns **404** (no existence leak for security);
+  a teammate who *can* see a task but isn't its creator gets **403** on delete. Members are added **by email**;
+  you can leave a team while others remain, or delete one you're the sole member of.
 
 ## Notable correctness details
 
@@ -143,9 +131,10 @@ category (filterable via `Logging:LogLevel:Audit` in `appsettings.json`):
 Passwords, hashes, and tokens are **never** logged. Auth events include the email by design (it's the
 audit identity); everything else prefers IDs over PII. This is deliberately *application logging*, not a
 metrics/tracing stack.
+> I added the above largely due to having working in SOC2 or HIPPA heavy environments in the past and needing
+> to know who did what and when in terms of actions that a user could take in a UI.
 
-A **persistent, queryable audit trail** (immutable who-did-what rows, retained for later review) is
-intentionally **not** built at this scope — see *What I'd do next*.
+A **persistent, queryable audit trail** is intentionally **not** built at this scope — see *What I'd do next*.
 
 ## Tests
 
@@ -166,17 +155,21 @@ highest-risk areas the brief names, plus key invariants:
 
 ## What I'd do next
 
-- Swap the EF Core provider to **SQL Server / Azure SQL** (a connection-string + provider change; the
-  data access is kept provider-agnostic) and deploy as a single container to **Azure** App
+- Swap the EF Core provider to **SQL Server / Azure SQL** and deploy as a single container to **Azure** App
   Service / Container Apps with Azure SQL + Key Vault.
-- Pagination as a user's task count grows; refresh tokens + revocation; a **Playwright** e2e of the
-  core flow with an **axe-core** accessibility scan.
+- Pagination as a user's task count grows.
+- Refresh tokens + revocation.
+- Playwright e2e UI testing of the core flow.
 - A **persistent, queryable audit trail** (e.g. an EF Core `SaveChanges` interceptor writing immutable
-  audit rows) if actions ever need to be reviewed after the fact — the production step up from the
-  application-level audit logging that's in place now.
+  audit rows) if actions ever need to be reviewed after the fact. Something that would persist over multiple
+  instances, startups, etc. and stored someplace safe.
 - A team **invite/acceptance flow** (today add-by-email adds people immediately), the ability to
-  **remove** other members, and **per-user pins** (a pin is currently shared on the task).
-- Recurring tasks.
+  **remove** other members, and **per-user pins** (a pin is currently shared on the task accross a Team).
+  Right now, anyone can just add anyone to a team and while the just-added user can simply leave the team, it
+  would be better to allow users to accept or deny being added to a Team in the first place.
+- Email notifications. I would like to see email notifications on task creation, deletion, updates (assignment,
+  comments, etc), but intentionally left out email server handling for this task and scope.
+- Recurring tasks. Tasks that are auto-created by the server on some routine like weekly, daily, etc. 
 
 ## Project layout
 
