@@ -6,7 +6,8 @@ import type { CreateTaskInput, Task, TaskQuery, UpdateTaskInput } from '../types
 import { PRIORITIES, STATUSES, STATUS_LABELS } from '../types'
 import TaskCard from '../components/TaskCard.vue'
 import TaskDetailModal from '../components/TaskDetailModal.vue'
-import { useRecentStore } from '../stores/ui'
+import { useRecentStore, useToastStore } from '../stores/ui'
+import { tasksApi } from '../api/tasks'
 
 const filters = reactive<TaskQuery>({ q: '', status: '', priority: '', sort: 'due', teamId: '', assignee: '' })
 const queryRef = computed<TaskQuery>(() => ({ ...filters }))
@@ -14,6 +15,7 @@ const { data: tasks, isPending, isError, refetch } = useTasksQuery(queryRef)
 const { create, update, remove } = useTaskMutations()
 const { data: teams } = useTeamsQuery()
 const recent = useRecentStore()
+const toasts = useToastStore()
 
 // Debounce search input into the (reactive) query.
 const searchInput = ref('')
@@ -84,9 +86,19 @@ function deleteTask(task: Task) {
     recent.remove(task.id)
   }
 }
-function openRecent(id: string) {
+async function openRecent(id: string) {
+  // Open even when the task is hidden by the current filters: prefer the loaded copy, else fetch by id.
   const found = tasks.value?.find((t) => t.id === id)
-  if (found) openView(found)
+  if (found) {
+    openView(found)
+    return
+  }
+  try {
+    openView(await tasksApi.get(id))
+  } catch {
+    recent.remove(id)
+    toasts.push('That task is no longer available.', 'error')
+  }
 }
 
 const hasActiveFilters = computed(
