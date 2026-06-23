@@ -11,8 +11,8 @@ using TaskManager.Api.Data;
 namespace TaskManager.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260622214946_AddTeams")]
-    partial class AddTeams
+    [Migration("20260623144939_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
